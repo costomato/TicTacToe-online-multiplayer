@@ -1,0 +1,30 @@
+*{
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+ul{
+	list-style: none;
+	text-decoration: none;
+}
+
+body{
+	text-align: center;
+}
+
+#msg {
+	height: 60px;
+	font-size: 20pt;
+}
+
+#btn {
+	height: 50px;
+	font-size: 30;
+}
+
+.inp {
+	height: 20px;
+	width: 300px;
+	margin: 10px;
+}
