@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const server = require('http').createServer(app)
 require('dotenv').config()
+const port = process.env.PORT || 8080
 
 const io = require("socket.io")(server, {
   cors: { origin: "*" },
@@ -40,6 +41,6 @@ io.on('connection', (socket) => {
 
 app.use(express.static('public'))
 
-server.listen(process.env.PORT, () => {
+server.listen(port, () => {
   console.log("listeing on " + process.env.URL);
 });

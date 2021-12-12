@@ -1,4 +1,5 @@
-const socket = io('http://localhost:8080');
+// const socket = io('http://localhost:8080');
+const socket = io(window.location.href);
 
 let fromId = toId = ''
 document.getElementById('btnFromId').onclick = () => {
