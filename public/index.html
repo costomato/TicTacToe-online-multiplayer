@@ -5,28 +5,60 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private chatting</title>
+    <title>Tic tac toe</title>
     <link rel="stylesheet" href="styles.css" />
-    <script src="https://cdn.socket.io/socket.io-3.0.0.js"></script>
+    <script defer src="https://cdn.socket.io/socket.io-3.0.0.js"></script>
     <script defer src="app.js"></script>
 </head>
 
 <body>
-    <div>
-        <input id="fromId" class="inp" type="text" placeholder="Set your ID (example abc)">
-        <button id="btnFromId">Set id</button>
+    <div id="roomCreation" style="display: block;">
+        <div class="primary">
+            <input id="creatorName" type="text" placeholder="Your name" style="padding: 3px;">
+            <br>
+            <button id="btnCreateRoom" style="margin-top: 6pt; padding: 3px;" onclick="winner()">Create room</button>
+        </div>
+        <div>
+            <h3>OR</h3>
+        </div>
+        <div class="primary">
+            <input id="joinerName" type="text" placeholder="Your name" style="padding: 3px;">
+            <input id="inJoinRoom" type="text" placeholder="Room code" style="padding: 3px;">
+            <br>
+            <button id="btnJoinRoom" style="margin-top: 6pt; padding: 3px;">Join room</button>
+        </div>
     </div>
-    <div>
-        <input id="toId" class="inp" type="text" placeholder="Type your friend's ID (example xyz)">
-        <button id="btnToId">Set id</button>
+    <div id="ticTac" style="display: none;">
+        <div style="margin-bottom: 10px; margin-top: 20px;">
+            <h3 id="roomCode">Room code: </h3>
+        </div>
+        <div style="margin-bottom: 14px;">
+            <h3>Players present in room:</h3>
+            <ul id="players"></ul>
+        </div>
+        <div class="gameContainer">
+            <input id="b0" class="gameButton" onclick="boxListener('0', this.value)" readonly>
+            <input id="b1" class="gameButton" onclick="boxListener('1', this.value)" readonly>
+            <input id="b2" class="gameButton" onclick="boxListener('2', this.value)" readonly>
+        </div>
+        <div class="gameContainer">
+            <input id="b3" class="gameButton" onclick="boxListener('3', this.value)" readonly>
+            <input id="b4" class="gameButton" onclick="boxListener('4', this.value)" readonly>
+            <input id="b5" class="gameButton" onclick="boxListener('5', this.value)" readonly>
+        </div>
+        <div class="gameContainer">
+            <input id="b6" class="gameButton" onclick="boxListener('6', this.value)" readonly>
+            <input id="b7" class="gameButton" onclick="boxListener('7', this.value)" readonly>
+            <input id="b8" class="gameButton" onclick="boxListener('8', this.value)" readonly>
+        </div>
+        <div id="retryContainer" style="display: none;">
+            <button id="btnRetry" style="padding: 4px; margin-top: 12px;">Retry</button>
+        </div>
+        <div style="margin-top: 14px;">
+            <h3 style="margin-bottom: 4px;">Game status:</h3>
+            <ul id="gameStatus"></ul>
+        </div>
     </div>
-    <div>
-        <input id="msg" type="text" placeholder="Type your message">
-        <button id="btnSend">Send</button>
-    </div>
-
-    <ul></ul>
-
 </body>
 
 </html>

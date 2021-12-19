@@ -9,34 +9,114 @@ const io = require("socket.io")(server, {
 });
 
 const sockets = {};
-const getChatSocket = (socket) => {
-  return sockets['chat-user-' + socket];
+const getRoom = (roomCode) => {
+  return sockets['room-' + roomCode];
 }
 
-const setChatSocket = (socket, data) => {
-  sockets['chat-user-' + socket] = data;
+const createNewRoom = (roomCode, data) => {
+  sockets['room-' + roomCode] = {
+    creatorName: data.name,
+    playerQuantity: 1,
+    board: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+    player1Socket: data.socket
+  };
 }
 
-const deleteChatSocket = (socket) => {
-  delete sockets["chat-user-" + socket];
+const updateBoardOnSocket = (roomCode, req) => {
+  sockets['room-' + roomCode].board[req.index] = req.move
+}
+const resetBoardOnSocket = (roomCode) => {
+  sockets['room-' + roomCode].board = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 }
 
+const checkWinner = require('./util/checkWinner')
+const getRoomWinner = (roomCode) => {
+  const board = sockets[`room-${roomCode}`]['board']
+  return checkWinner(board)
+}
+const getRemainingMovesInRoom = (roomCode) => {
+  const board = sockets[`room-${roomCode}`]['board']
+  let count = 0
+  board.forEach((item) => {
+    if (item >= '1' && item <= '9')
+      count++
+  })
+  return count
+}
+const addPlayerInRoom = (roomCode, data) => {
+  const soc = sockets[`room-${roomCode}`]
+  soc.playerQuantity++
+  soc.player2Socket = data.socket
+  soc.joinerName = data.name
+}
+
+const deleteRoom = (roomCode) => {
+  delete sockets["room-" + roomCode];
+}
+
+const generateRoomCode = require('./util/generateRoomCode')
 io.on('connection', (socket) => {
-  socket.on('connect-user', (userId) => {
-    socket.socketid = userId;
-    setChatSocket(socket.socketid, socket);
-    console.log(sockets);
+
+  socket.on('create-room', (req) => {
+    /* req contains { name } */
+    let roomCode = generateRoomCode()
+    while (`room-${roomCode}` in sockets)
+      roomCode = generateRoomCode()
+
+    createNewRoom(roomCode, { name: req.name, socket: socket })
+    socket.emit('create-room', { roomCode: roomCode, yourSymbol: 'X' })
+    /* create-room response contains { roomCode, yourSymbol } */
+  })
+
+  socket.on('join-room', (req) => {
+    /* req contains { roomCode, name } */
+    const room = getRoom(req.roomCode)
+    if (room) {
+      if (room.playerQuantity < 2) {
+        addPlayerInRoom(req.roomCode, { name: req.name, socket: socket })
+        socket.emit('join-status', { statusOk: true, statusCode: 100, statusString: 'Joined', firstMove: 'X', roomCode: req.roomCode, creatorName: room.creatorName, yourSymbol: 'O' })
+        room.player1Socket.emit('join-status', { statusOk: true, statusCode: 101, statusString: req.name, firstMove: 'X', yourSymbol: 'X' })
+      }
+      else
+        socket.emit('join-status', { statusOk: false, statusCode: 102, statusString: 'Room is full' })
+    } else
+      socket.emit('join-status', { statusOk: false, statusCode: 103, statusString: 'Room does not exist' })
   });
 
-  socket.on('disconnect', () => {
-    deleteChatSocket(socket.socketid);
+  socket.on('move', (req) => {
+    /* req contains { roomCode, index, move, player } */
+    const roomCode = req.roomCode
+    const room = getRoom(roomCode)
+    req.currentMove = req.move == 'X' ? 'O' : 'X'
+    room.player2Socket.emit('move', req)
+    room.player1Socket.emit('move', req)
+    /* move response contains { roomCode, index, move, player, currentMove } */
+
+    updateBoardOnSocket(roomCode, req)
+
+    const winner = getRoomWinner(roomCode)
+    if (winner) {
+      const res = { winner: winner == 'X' ? room.creatorName : room.joinerName, draw: false, symbol: winner }
+      room.player1Socket.emit('winner', res)
+      room.player2Socket.emit('winner', res)
+    } else if (getRemainingMovesInRoom(roomCode) == 0) {
+      room.player1Socket.emit('winner', { winner: 'No one', draw: true })
+      room.player2Socket.emit('winner', { winner: 'No one', draw: true })
+    }
+  })
+
+  socket.on('retry-game', (req) => {
+    const room = getRoom(req.roomCode)
+    resetBoardOnSocket(req.roomCode)
+    const res = { move: req.symbol == 'X' ? 'O' : 'X' }
+    room.player1Socket.emit('retry-game', res)
+    room.player2Socket.emit('retry-game', res)
+  })
+
+  socket.on('delete-room', (roomCode) => {
+    deleteRoom(roomCode);
   });
 
-  socket.on('message', (message) => {
-    const receiver = getChatSocket(message.receiver)
-    if (receiver)
-      receiver.emit('message', { body: message.body, sender: message.sender });
-  });
 })
 
 app.use(express.static('public'))

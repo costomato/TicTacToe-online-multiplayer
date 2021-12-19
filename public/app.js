@@ -1,47 +1,135 @@
-// const socket = io('http://localhost:8080');
 const socket = io(window.location.href);
 
-let fromId = toId = ''
-document.getElementById('btnFromId').onclick = () => {
-  fromId = document.getElementById('fromId').value
-  if (fromId === '')
-    alert("ID cannot be blank")
-  else
-    socket.emit('connect-user', fromId)
-}
-document.getElementById('btnToId').onclick = () => {
-  toId = document.getElementById('toId').value
-  if (toId === '')
-    alert("ID cannot be blank")
-  console.log(toId);
+const displayPlayer = (player) => {
+  const li = document.createElement("li");
+  li.innerHTML = player;
+  li.style.fontSize = "18px";
+  document.getElementById("players").append(li);
 }
 
-const displayMessage = (sender, body) => {
-  const el = document.createElement("li");
-  el.innerHTML = `${sender} said: ${body}`;
-  el.style.fontSize = "24pt";
-  document.querySelector("ul").appendChild(el);
+const displayStatus = (status) => {
+  const li = document.createElement("li");
+  li.innerHTML = status;
+  li.style.fontSize = "18px";
+  document.getElementById('gameStatus').prepend(li);
 }
-document.getElementById('btnSend').onclick = () => {
-  const message = {
-    body: document.getElementById('msg').value,
-    receiver: toId,
-    sender: fromId
-  }
-  if (message.body !== '' && toId !== '' && fromId !== '') {
-    document.getElementById('msg').value = ''
-    socket.emit('message', message);
-    displayMessage('You', message.body)
-  } else if (message.body !== '')
-    alert("ID cannot be blank")
+
+// hide roomCreation show ticTac
+const displayGameLayout = () => {
+  document.getElementById('roomCreation').style.display = 'none'
+  document.getElementById('ticTac').style.display = 'block'
 }
-document.getElementById('msg').addEventListener("keyup", (event, callback) => {
-  if (event.key == 'Enter') {
-    document.getElementById('btnSend').click()
-  }
-  callback('Enter')
+
+
+// room creation
+let joinerName, move, yourSymbol, creatorName, yourName
+
+document.getElementById('btnCreateRoom').onclick = () => {
+  creatorName = document.getElementById('creatorName').value.trim()
+  yourName = creatorName
+  if (creatorName)
+    socket.emit('create-room', { name: creatorName })
+  else
+    alert("Hey you! Don't you have a name? :)")
+}
+
+let roomCode
+socket.on('create-room', (res) => {
+  /* create-room response contains { roomCode, yourSymbol } */
+  displayGameLayout()
+  roomCode = res.roomCode
+  document.getElementById('roomCode').innerHTML = `Room code: ${roomCode}`
+  displayPlayer(creatorName)
 })
 
-socket.on('message', (message) => {
-  displayMessage(message.sender, message.body)
+
+// room joining
+document.getElementById('btnJoinRoom').onclick = () => {
+  joinerName = document.getElementById('joinerName').value.trim()
+  yourName = joinerName
+  roomCode = document.getElementById('inJoinRoom').value.trim()
+  if (joinerName && roomCode)
+    socket.emit('join-room', { roomCode: roomCode, name: joinerName })
+  else if (joinerName)
+    alert('You forgot to enter the room code!!')
+  else
+    alert("Hey you! Don't you have a name? :)")
+}
+
+socket.on('join-status', (res) => {
+  /* join-status response contains 
+  { statusOk: true, statusCode: 100, statusString: 'Joined', firstMove: 'X', roomCode: req.roomCode, creatorName: room.creatorName, yourSymbol: 'O' 
+ } */
+  if (res.statusOk) {
+    if (res.statusCode == 100) { // joiner
+      displayGameLayout()
+      roomCode = res.roomCode
+      document.getElementById('roomCode').innerHTML = `Room code: ${roomCode}`
+      displayPlayer(res.creatorName)
+      displayPlayer(joinerName)
+    } else { // creator
+      displayPlayer(res.statusString)
+    }
+    yourSymbol = res.yourSymbol
+    move = res.firstMove
+    displayStatus(`'${yourSymbol}' is your symbol`)
+    displayStatus(`'${res.firstMove}' moves first`)
+  } else {
+    alert(res.statusString)
+  }
+})
+
+
+
+// playing the game
+const markOnBoard = (board) => {
+  const btn = document.getElementById(`b${board.index}`)
+  btn.value = board.move
+}
+
+const boxListener = (index, value) => {
+  if (!value && move == yourSymbol) {
+    socket.emit('move', { roomCode: roomCode, index: index, move: move, player: yourName })
+    markOnBoard({ index: index, move: yourSymbol })
+  }
+}
+
+socket.on('move', (res) => {
+  /* move response contains { roomCode, index, move, player, currentMove } */
+  move = res.currentMove
+  markOnBoard({ index: res.index, move: res.move })
+})
+
+
+// declaring winner
+socket.on('winner', (res) => {
+  if (res.draw)
+    displayStatus(`Oops :/ Match drawn. That was an amazing clash! Both of you should try again :D`)
+  else
+    displayStatus(`${res.winner} with symbol ${res.symbol} is the winner!! Congrats to the champion.`)
+  move = null
+  document.getElementById('retryContainer').style.display = 'block'
+})
+
+
+// enabling retry
+const resetGame = (currentMove) => {
+  document.getElementById('retryContainer').style.display = 'none'
+  move = currentMove
+  for (let i = 0; i <= 8; i++) {
+    document.getElementById(`b${i}`).value = ''
+  }
+  document.getElementById('gameStatus').innerHTML = "";
+
+  displayStatus(`'${yourSymbol}' is your symbol`)
+  displayStatus(`'${move}' moves first`)
+}
+
+document.getElementById('btnRetry').onclick = () => {
+  socket.emit('retry-game', { roomCode: roomCode, symbol: yourSymbol })
+}
+
+socket.on('retry-game', (res) => {
+  /* res contains { move } */
+  resetGame(res.move)
 })
