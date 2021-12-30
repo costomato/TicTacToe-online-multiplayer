@@ -56,6 +56,7 @@ document.getElementById('btnJoinRoom').onclick = () => {
     alert("Hey you! Don't you have a name? :)")
 }
 
+let roomReady = false
 socket.on('join-status', (res) => {
   /* join-status response contains 
   { statusOk: true, statusCode: 100, statusString: 'Joined', firstMove: 'X', roomCode: req.roomCode, creatorName: room.creatorName, yourSymbol: 'O' 
@@ -67,8 +68,10 @@ socket.on('join-status', (res) => {
       document.getElementById('roomCode').innerHTML = `Room code: ${roomCode}`
       displayPlayer(res.creatorName)
       displayPlayer(joinerName)
+      roomReady = true
     } else { // creator
       displayPlayer(res.statusString)
+      roomReady = true
     }
     yourSymbol = res.yourSymbol
     move = res.firstMove
@@ -88,9 +91,11 @@ const markOnBoard = (board) => {
 }
 
 const boxListener = (index, value) => {
-  if (!value && move == yourSymbol) {
+  if (!value && move == yourSymbol && roomReady) {
     socket.emit('move', { roomCode: roomCode, index: index, move: move, player: yourName })
     markOnBoard({ index: index, move: yourSymbol })
+  } else if (!roomReady) {
+    alert("Could you just wait for your friend to join?");
   }
 }
 
