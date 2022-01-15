@@ -74,7 +74,9 @@ io.on('connection', (socket) => {
     if (room) {
       if (room.playerQuantity < 2) {
         addPlayerInRoom(req.roomCode, { name: req.name, socket: socket })
+        // for joiner
         socket.emit('join-status', { statusOk: true, statusCode: 100, statusString: 'Joined', firstMove: 'X', roomCode: req.roomCode, creatorName: room.creatorName, yourSymbol: 'O' })
+        // for creator
         room.player1Socket.emit('join-status', { statusOk: true, statusCode: 101, statusString: req.name, firstMove: 'X', yourSymbol: 'X' })
       }
       else
@@ -114,12 +116,21 @@ io.on('connection', (socket) => {
   })
 
   socket.on('delete-room', (roomCode) => {
+    const room = getRoom(roomCode)
+    socket.emit('delete-room')
+    if ('player2Socket' in room)
+      room.player2Socket.emit('delete-room')
     deleteRoom(roomCode);
   });
 
 })
 
 app.use(express.static('public'))
+
+app.get('/status', (_, res) => {
+  console.log("A request came");
+  res.send({ status: "Application is working :)" });
+})
 
 server.listen(port, () => {
   console.log("listeing on " + process.env.URL);

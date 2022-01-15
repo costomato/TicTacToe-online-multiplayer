@@ -138,3 +138,7 @@ socket.on('retry-game', (res) => {
   /* res contains { move } */
   resetGame(res.move)
 })
+
+socket.on("delete-room", () => {
+  location.reload()
+})
