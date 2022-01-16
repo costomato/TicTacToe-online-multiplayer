@@ -117,7 +117,7 @@ io.on('connection', (socket) => {
 
   socket.on('delete-room', (roomCode) => {
     const room = getRoom(roomCode)
-    socket.emit('delete-room')
+    room.player1Socket.emit('delete-room')
     if ('player2Socket' in room)
       room.player2Socket.emit('delete-room')
     deleteRoom(roomCode);
